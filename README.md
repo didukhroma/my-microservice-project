@@ -1,2 +1,3 @@
-# my-microservice-project
-devops project
+## Мета  
+
+Навчитися основам роботи з Git і GitHub.
