@@ -1,0 +1,17 @@
+apiVersion: v2
+name: django-app
+description: A Helm chart for Django application with PostgreSQL and auto-scaling
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - django
+  - python
+  - web
+  - kubernetes
+home: https://github.com/didukhroma/my-microservice-project
+sources:
+  - https://github.com/didukhroma/my-microservice-project
+maintainers:
+  - name: DevOps Engineer
+    email: devops@example.com

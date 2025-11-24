@@ -1,0 +1,50 @@
+image:
+  repository: '757370076418.dkr.ecr.us-west-2.amazonaws.com/lesson-7-ecr'
+  tag: 'v1'
+  pullPolicy: Always
+
+replicaCount: 2
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+
+
+config:
+  DEBUG: "False"
+  SECRET_KEY: "django-production-key-change-this"
+  POSTGRES_DB: "myproject"
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+
+podSecurityContext: {}
+
+securityContext: {}
