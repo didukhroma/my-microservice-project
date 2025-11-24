@@ -1,6 +1,6 @@
 Структура проєкту
 
-![alt text](image.png)
+![alt text | 400](asserts/image.png)
 
 Команди для ініціалізації та запуску:
 
