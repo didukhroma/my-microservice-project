@@ -1,9 +1,9 @@
-image:
-  repository: '757370076418.dkr.ecr.us-west-2.amazonaws.com/lesson-7-ecr'
-  tag: 'v1'
-  pullPolicy: Always
-
 replicaCount: 2
+
+image:
+  repository: 757370076418.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-app
+  pullPolicy: Always
+  tag: "v4"
 
 nameOverride: ""
 fullnameOverride: ""
@@ -13,23 +13,11 @@ service:
   port: 80
   targetPort: 8000
 
-
-config:
-  DEBUG: "False"
-  SECRET_KEY: "django-production-key-change-this"
-  POSTGRES_DB: "myproject"
-  POSTGRES_USER: "postgres"
-  POSTGRES_PASSWORD: "postgres"
-  DB_HOST: "postgres-service"
-  DB_PORT: "5432"
-
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
-
 
 resources:
   limits:
@@ -39,12 +27,16 @@ resources:
     cpu: 250m
     memory: 256Mi
 
+config:
+  SECRET_KEY: "django-app"
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  POSTGRES_DB: "project"
+  POSTGRES_USER: "myuser"
+  POSTGRES_PASSWORD: "mypassword"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
 
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
-
-podSecurityContext: {}
-
-securityContext: {}

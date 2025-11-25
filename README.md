@@ -1,37 +1,82 @@
-Структура проєкту
+**Структура проєкту**
 
 ![alt text | 400](asserts/image.png)
 
-Команди для ініціалізації та запуску:
+**Необхідні пакети:**
+- AWS CLI
+- Terraform
+- kubectl
+- Helm
+- Docker
+
+
+**Команди для ініціалізації та запуску:**
+
+1. **Підготовка інфраструктури**
 
 ```
-Created base structure without backend
+git clone https://github.com/didukhroma/my-microservice-project.git
 
-Rename backend.tf -> backend.tf.off
+cd my-microservice-project
+
+# Ініціалізація Terraform
 terraform init
+
+# Перевірка плану змін
 terraform plan
+
+# Створення інфраструктури
 terraform apply
 
-Created backend
-
-Rename backend.tf.off -> backend.tf
-terraform init
-
-For delete structure
-terraform destroy
+```
+2. **Налаштування Kubernetes**
 
 ```
+# Підключення до EKS-кластеру
+aws eks update-kubeconfig --region us-west-2 --name lesson-7-eks-cluster
 
-Пояснення кожного модуля:
+# Перевірка нод
+kubectl get nodes
+```
 
-S3-backend
+3. **Підготовка Docker-образу**
+```
+# Перехід в Django-проєкт
+cd ./docker/django_app
 
-Відповідає за синхронізацію стейт-файлів у S3 з використанням DynamoDB для блокування.
+# Збірка образу 
+docker build --no-cache -t lesson-7-django-app .
 
-VPC
+# Логін у ECR
+aws ecr get-login-password --region us-west-2 \
+  | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com
 
-Відповідає за мережеву інфраструктуру (VPC) з публічними та приватними підмережами.
+# Додавання тегу
+docker tag lesson-7-django-app:latest ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-app:latest
 
-ECR
+# Завантаження
+docker push ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-app:latest
+```
+4. **Helm**
+```
+#Перехід в корінь проекту
+cd ../../
 
-ECR (Elastic Container Registry) використовується для зберігання Docker-образів.
+# Встановлення Helm
+helm install django-app ./charts/django-app
+
+# Перевірка статусу
+helm status django-app
+kubectl get all
+```
+![alt text](asserts/all.png)
+
+5. **Доступ до застосунку**
+```
+# Отримання зовнішнього IP 
+kubectl get service django-app
+```
+
+Робоча сторінка
+![alt text](asserts/web-page.png)
+
