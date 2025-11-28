@@ -16,7 +16,7 @@ resource "aws_iam_role" "eks_cluster_role" {
 
   tags = {
     Name        = "${var.cluster_name}-cluster-role"
-    Environment = "lesson-7"
+    Environment = "lesson-8-9"
   }
 }
 
@@ -25,6 +25,7 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   role       = aws_iam_role.eks_cluster_role.name
 }
 
+# EKS Cluster
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster_role.arn
@@ -45,10 +46,11 @@ resource "aws_eks_cluster" "main" {
 
   tags = {
     Name        = var.cluster_name
-    Environment = "lesson-7"
+    Environment = "lesson-8-9"
   }
 }
 
+# EKS Node Group IAM Role
 resource "aws_iam_role" "eks_node_group_role" {
   name = "${var.cluster_name}-node-group-role"
 
@@ -67,7 +69,7 @@ resource "aws_iam_role" "eks_node_group_role" {
 
   tags = {
     Name        = "${var.cluster_name}-node-group-role"
-    Environment = "lesson-7"
+    Environment = "lesson-8-9"
   }
 }
 
@@ -86,6 +88,7 @@ resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
   role       = aws_iam_role.eks_node_group_role.name
 }
 
+# EKS Node Group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = var.node_group_name
@@ -113,7 +116,7 @@ resource "aws_eks_node_group" "main" {
 
   tags = {
     Name        = var.node_group_name
-    Environment = "lesson-7"
+    Environment = "lesson-8-9"
   }
 }
 
@@ -132,4 +135,14 @@ resource "aws_eks_addon" "coredns" {
 resource "aws_eks_addon" "kube_proxy" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "kube-proxy"
+}
+
+resource "aws_iam_role_policy_attachment" "node_group_ebs_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.eks_node_group_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "node_group_ec2_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+  role       = aws_iam_role.eks_node_group_role.name
 }

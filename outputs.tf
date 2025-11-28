@@ -32,3 +32,32 @@ output "kubectl_config_command" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region us-west-2 --name ${module.eks.cluster_name}"
 }
+
+output "jenkins_url" {
+  description = "Jenkins LoadBalancer URL"
+  value       = module.jenkins.jenkins_url
+}
+
+output "jenkins_admin_user" {
+  description = "Jenkins admin username"
+  value       = module.jenkins.jenkins_admin_user
+}
+
+output "jenkins_admin_password" {
+  description = "Jenkins admin password"
+  value       = module.jenkins.jenkins_admin_password
+  sensitive   = true
+}
+
+
+output "argocd_server_url" {
+  description = "Argo CD Server URL"
+  value       = module.argo_cd.argocd_server_url
+}
+
+output "argocd_admin_password" {
+  description = "Argo CD admin password"
+  value       = module.argo_cd.argocd_admin_password
+  sensitive   = true
+}
+

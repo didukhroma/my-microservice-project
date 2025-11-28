@@ -77,9 +77,14 @@ Progect/
 - kubectl
 - Helm
 - Docker
+- Git
 
 
 **Команди для ініціалізації та запуску:**
+
+1. ***Підготовка доступу**
+
+aws eks update-kubeconfig --region us-west-2 --name lesson-8-9-eks-cluster #update cluster
 
 1. **Підготовка інфраструктури**
 
@@ -102,7 +107,7 @@ terraform apply
 
 ```
 # Підключення до EKS-кластеру
-aws eks update-kubeconfig --region us-west-2 --name lesson-7-eks-cluster
+aws eks update-kubeconfig --region us-west-2 --name lesson-8-9-eks-cluster
 
 # Перевірка нод
 kubectl get nodes
@@ -114,17 +119,17 @@ kubectl get nodes
 cd ./docker/django_app
 
 # Збірка образу 
-docker build --no-cache -t lesson-7-django-app .
+docker build --no-cache -t lesson-8-9-django-app .
 
 # Логін у ECR
 aws ecr get-login-password --region us-west-2 \
   | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com
 
 # Додавання тегу
-docker tag lesson-7-django-app:latest ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-app:latest
+docker tag lesson-8-9-django-app:latest ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-app:latest
 
 # Завантаження
-docker push ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-7-django-app:latest
+docker push ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-app:latest
 ```
 4. **Helm**
 ```

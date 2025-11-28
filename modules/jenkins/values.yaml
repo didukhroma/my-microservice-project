@@ -1,0 +1,107 @@
+controller:
+  # Jenkins Controller Configuration
+  image: "jenkins/jenkins"
+  tag: "lts-jdk17"
+
+  startupProbe:
+    failureThreshold: 15
+    periodSeconds: 20
+  
+  # Resources
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+
+  # Service configuration
+  serviceType: LoadBalancer
+  servicePort: 8080
+  
+  # Jenkins Configuration as Code
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      welcome-message: |
+        jenkins:
+          systemMessage: "Jenkins for CI/CD Pipeline"
+        
+  # Security
+  admin:
+    existingSecret: ""
+    userKey: jenkins-admin-user
+    passwordKey: jenkins-admin-password
+
+  # Plugins to install
+  installPlugins: 
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+    - pipeline-stage-view:latest
+    - docker-workflow:latest
+    - blueocean:latest
+    - credentials-binding:latest
+    - github:latest
+    - pipeline-github-lib:latest
+    - aws-credentials:latest
+
+  # Additional environment variables
+  additionalExistingSecrets:
+    - name: aws-credentials
+      keyName: aws-access-key-id
+    - name: aws-credentials
+      keyName: aws-secret-access-key
+
+# Agent configuration
+agent:
+  enabled: true
+  image: "jenkins/inbound-agent"
+  tag: "3107.v665000b_51092-5"
+  
+# Kaniko agent for Docker builds
+podTemplates:
+  kaniko: |
+    - name: kaniko
+      label: kaniko
+      serviceAccount: jenkins-admin
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:debug
+        command: ["/busybox/cat"]
+        tty: true
+        volumeMounts:
+        - name: aws-secret
+          mountPath: /root/.aws/
+      - name: git
+        image: alpine/git:latest
+        command: ["/bin/sh", "-c", "cat"]
+        tty: true
+      volumes: 
+      - secret: 
+          secretName: aws-credentials
+          name: aws-secret 
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: "gp2"
+  size: "20Gi"
+  accessMode: "ReadWriteOnce"
+
+# Security Context
+securityContext:
+  runAsUser: 1000
+  fsGroup: 1000
+  
+# Service Account
+serviceAccount:
+  create: false
+  name: jenkins-admin
+
+# RBAC
+rbac:
+  create: true
+  readSecrets: true
