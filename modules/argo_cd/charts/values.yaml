@@ -1,6 +1,6 @@
 # Default values for Argo CD Applications
 gitRepoUrl: "https://github.com/didukhroma/my-microservice-project.git"
-targetRevision: "devops-ci-cd"
+targetRevision: "lesson-8-9"
 djangoAppNamespace: "django-app"
 
 # Applications to create

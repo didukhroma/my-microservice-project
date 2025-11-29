@@ -84,73 +84,115 @@ Progect/
 
 1. ***Підготовка доступу**
 
-aws eks update-kubeconfig --region us-west-2 --name lesson-8-9-eks-cluster #update cluster
+```
+# Налаштуйте AWS CLI
+aws configure
 
-1. **Підготовка інфраструктури**
+Підготовка AWS Credentials
+# Отримайте ваш AWS Account ID
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+echo "AWS Account ID: $AWS_ACCOUNT_ID"
 
 ```
-git clone https://github.com/didukhroma/my-microservice-project.git
+Підготовка секретів
+```
+# Кодування AWS credentials в base64
+echo -n "YOUR_AWS_ACCESS_KEY_ID" | base64
+echo -n "YOUR_AWS_SECRET_ACCESS_KEY" | base64
 
-cd my-microservice-project
+# Створіть GitHub Personal Access Token і закодуйте
+echo -n "YOUR_GITHUB_TOKEN" | base64
+```
 
+Оновіть файл secrets.yaml вашими закодованими значеннями:
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: jenkins
+type: Opaque
+data:
+  aws-access-key-id: <BASE64_ENCODED_ACCESS_KEY>
+  aws-secret-access-key: <BASE64_ENCODED_SECRET_KEY>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: jenkins
+type: Opaque
+data:
+  token: <BASE64_ENCODED_GITHUB_TOKEN>
+```
+
+2. **Розгортання інфраструктури** 
+```
 # Ініціалізація Terraform
 terraform init
 
-# Перевірка плану змін
+# Перегляд планованих змін
 terraform plan
 
-# Створення інфраструктури
+# Розгортання інфраструктури (15–20 хвилин)
 terraform apply
-
-```
-2. **Налаштування Kubernetes**
-
-```
-# Підключення до EKS-кластеру
-aws eks update-kubeconfig --region us-west-2 --name lesson-8-9-eks-cluster
-
-# Перевірка нод
-kubectl get nodes
 ```
 
-3. **Підготовка Docker-образу**
+3. **Налаштування CI/CD Pipeline**
+
+```# Отримання URLs та паролів
+terraform output deployment_instructions
 ```
-# Перехід в Django-проєкт
-cd ./docker/django_app
-
-# Збірка образу 
-docker build --no-cache -t lesson-8-9-django-app .
-
-# Логін у ECR
-aws ecr get-login-password --region us-west-2 \
-  | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com
-
-# Додавання тегу
-docker tag lesson-8-9-django-app:latest ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-app:latest
-
-# Завантаження
-docker push ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-app:latest
 ```
-4. **Helm**
-```
-#Перехід в корінь проекту
-cd ../../
-
-# Встановлення Helm
-helm install django-app ./charts/django-app
-
-# Перевірка статусу
-helm status django-app
-kubectl get all
-```
-![alt text](asserts/all.png)
-
-5. **Доступ до застосунку**
-```
-# Отримання зовнішнього IP 
-kubectl get service django-app
+# Отримання паролів окремо
+terraform output jenkins_admin_password
+terraform output argocd_admin_password
 ```
 
-Робоча сторінка
-![alt text](asserts/web-page.png)
+Логін в Jenkins:
 
+```
+Username: admin
+Password: terraform output jenkins_admin_password
+Створення Pipeline Job:
+
+New Item → Pipeline
+Pipeline script from SCM
+Git Repository: https://github.com/didukhroma/my-microservice-project.git
+Branch: dev
+Script Path: Jenkinsfile
+Налаштування Credentials:
+
+Manage Jenkins → Credentials
+Додайте GitHub token з ID: github-token
+```
+Налаштування Argo CD
+Доступ до Argo CD UI:
+
+Отримати URL Argo CD
+```
+terraform output argocd_server_url
+Логін в Argo CD:
+
+Username: admin
+Password: terraform output argocd_admin_password
+Перевірка Applications:
+
+Argo CD автоматично створить Application для Django
+Перевірте статус синхронізації
+```
+
+3. **Процес CI/CD**
+Continuous Integration (Jenkins)
+
+Тригер: Push у гілку dev
+Збірка: Kaniko збирає Docker-образ з Django-кодом
+Публікація: Образ публікується в ECR з тегом build number
+Оновлення: Jenkins оновлює values.yaml у гілці lesson-8-9
+Commit: Зміни комітяться назад у Git-репозиторій
+Continuous Deployment (Argo CD)
+
+Моніторинг: Argo CD відстежує зміни в гілці lesson-8-9
+Синхронізація: Автоматично застосовує зміни в Kubernetes
+Деплой: Новий Docker-образ розгортається в кластері
+Масштабування: HPA автоматично масштабує поди за навантаженням
