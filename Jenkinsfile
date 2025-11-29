@@ -97,59 +97,56 @@ spec:
     }
 
     stage('Update Chart Tag (GitOps)') {
-    steps {
-        
-        withCredentials([usernamePassword(
-            /
-            credentialsId: 'github-pat', 
-            usernameVariable: 'GIT_USERNAME', 
-            passwordVariable: 'GIT_TOKEN'
-        )]) {
-            container('git') {
-                
-                sh """
-                    set -eux
+      steps {
+          withCredentials([usernamePassword(
+              credentialsId: 'github-pat', 
+              usernameVariable: 'GIT_USERNAME', 
+              passwordVariable: 'GIT_TOKEN'
+          )]) {
+              container('git') {
+                  
+                  sh "git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
 
-                    # ВИПРАВЛЕННЯ 3: Встановлюємо URL з токеном для автентифікації
-                    GITOPS_PUSH_URL="https://\${GIT_USERNAME}:\${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
-                    
-                    rm -rf gitops-repo || true
-                    # Клонуємо за оригінальним URL, щоб не зберігати токен у конфігурації репозиторію
-                    git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
+                  sh """
+                      set -eux
+                      
+                      # Тепер GITOPS_PUSH_URL не потрібен. Ми оновили 'origin' за допомогою попередньої команди.
+                      
+                      rm -rf gitops-repo || true
+                      # Клонуємо за оригінальним URL (https://...)
+                      git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
 
-                    cd gitops-repo
+                      cd gitops-repo
 
-                    CHART_FILE="charts/django-app/values.yaml"
+                      CHART_FILE="charts/django-app/values.yaml"
 
-                    # 1) Оновлюємо тег у values.yaml
-                    # Екранування подвійних лапок (\\") всередині sed
-                    sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
-                    rm -f charts/django-app/values.yaml.bak
+                      # 1) Оновлюємо тег у values.yaml
+                      # Екранування подвійних лапок (\\") всередині sed для Bash
+                      sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
+                      rm -f charts/django-app/values.yaml.bak
 
-                    # 2) Коміт у lesson-8-9
-                    git config user.email "\$COMMIT_EMAIL"
-                    git config user.name "\$COMMIT_NAME"
+                      # 2) Коміт у lesson-8-9
+                      git config user.email "\$COMMIT_EMAIL"
+                      git config user.name "\$COMMIT_NAME"
 
-                    git add "\$CHART_FILE"
-                    # Використовуємо -m як резервний варіант, якщо коміту не було
-                    git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
-                    
-                    # Використовуємо GITOPS_PUSH_URL для Push
-                    git push "\$GITOPS_PUSH_URL" "\$CHART_BRANCH"
+                      git add "\$CHART_FILE"
+                      git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
+                      
+                      # Push у робочу гілку: використовуємо оновлений 'origin'
+                      git push origin "\$CHART_BRANCH"
 
-                    # 3) Мержимо lesson-8-9 -> main
-                    git fetch origin "\$MAIN_BRANCH"
-                    git checkout "\$MAIN_BRANCH"
-                    git merge --ff-only "\$CHART_BRANCH"
-                    
-                    # Використовуємо GITOPS_PUSH_URL для Push
-                    git push "\$GITOPS_PUSH_URL" "\$MAIN_BRANCH"
-                """
-            }
-        }
-    }
-}
-
+                      # 3) Мержимо lesson-8-9 -> main
+                      git fetch origin "\$MAIN_BRANCH"
+                      git checkout "\$MAIN_BRANCH"
+                      git merge --ff-only "\$CHART_BRANCH"
+                      
+                      # Push у головну гілку
+                      git push origin "\$MAIN_BRANCH"
+                  """
+              }
+          }
+      }
+  }
 
 
   }
