@@ -1,10 +1,54 @@
 {
   "version": 4,
   "terraform_version": "1.13.4",
-  "serial": 149,
+  "serial": 148,
   "lineage": "654a6cf3-864d-aa93-11df-9d4121807c62",
   "outputs": {},
   "resources": [
+    {
+      "module": "module.argo_cd",
+      "mode": "managed",
+      "type": "kubernetes_namespace",
+      "name": "argocd",
+      "provider": "provider[\"registry.terraform.io/hashicorp/kubernetes\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "argocd",
+            "metadata": [
+              {
+                "annotations": {},
+                "generate_name": "",
+                "generation": 0,
+                "labels": {},
+                "name": "argocd",
+                "resource_version": "181725",
+                "uid": "ec7b02ca-d8dd-4a72-bc24-8c7938b5ccf4"
+              }
+            ],
+            "timeouts": null,
+            "wait_for_default_service_account": false
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 1,
+          "identity": {
+            "api_version": "v1",
+            "kind": "Namespace",
+            "name": "argocd"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjozMDAwMDAwMDAwMDB9fQ==",
+          "dependencies": [
+            "module.eks.aws_eks_cluster.main",
+            "module.eks.aws_iam_role.eks_cluster_role",
+            "module.eks.aws_iam_role_policy_attachment.eks_cluster_policy",
+            "module.vpc.aws_subnet.private",
+            "module.vpc.aws_subnet.public",
+            "module.vpc.aws_vpc.main"
+          ]
+        }
+      ]
+    },
     {
       "module": "module.eks",
       "mode": "managed",

@@ -2,6 +2,9 @@ resource "kubernetes_namespace" "argocd" {
   metadata {
     name = var.namespace
   }
+   timeouts {
+    delete = "30m"
+  }
 }
 
 resource "kubernetes_namespace" "django_app" {
