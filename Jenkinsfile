@@ -97,56 +97,57 @@ spec:
     }
 
     stage('Update Chart Tag (GitOps)') {
-      steps {
-          withCredentials([usernamePassword(
-              credentialsId: 'github-pat', 
-              usernameVariable: 'GIT_USERNAME', 
-              passwordVariable: 'GIT_TOKEN'
-          )]) {
-              container('git') {
-                  
-                  sh "git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
+        steps {
+            withCredentials([usernamePassword(
+                credentialsId: 'github-pat', 
+                usernameVariable: 'GIT_USERNAME', 
+                passwordVariable: 'GIT_TOKEN'
+            )]) {
+                container('git') {
+                    // ВИПРАВЛЕННЯ: Додаємо робочу директорію до безпечних
+                    // Це виправляє "fatal: detected dubious ownership"
+                    sh 'git config --global --add safe.directory /workspace/workspace/Django-Kaniko-CI-CD'
+                    
+                    // Це та команда, що викликала попередження Groovy, але необхідна для push
+                    sh "git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
 
-                  sh """
-                      set -eux
-                      
-                      # Тепер GITOPS_PUSH_URL не потрібен. Ми оновили 'origin' за допомогою попередньої команди.
-                      
-                      rm -rf gitops-repo || true
-                      # Клонуємо за оригінальним URL (https://...)
-                      git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
+                    sh """
+                        set -eux
+                        
+                        # ... (інші команди Git нижче)
+                        rm -rf gitops-repo || true
+                        git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
 
-                      cd gitops-repo
+                        cd gitops-repo
 
-                      CHART_FILE="charts/django-app/values.yaml"
+                        CHART_FILE="charts/django-app/values.yaml"
 
-                      # 1) Оновлюємо тег у values.yaml
-                      # Екранування подвійних лапок (\\") всередині sed для Bash
-                      sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
-                      rm -f charts/django-app/values.yaml.bak
+                        # 1) Оновлюємо тег у values.yaml
+                        sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
+                        rm -f charts/django-app/values.yaml.bak
 
-                      # 2) Коміт у lesson-8-9
-                      git config user.email "\$COMMIT_EMAIL"
-                      git config user.name "\$COMMIT_NAME"
+                        # 2) Коміт у lesson-8-9
+                        git config user.email "\$COMMIT_EMAIL"
+                        git config user.name "\$COMMIT_NAME"
 
-                      git add "\$CHART_FILE"
-                      git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
-                      
-                      # Push у робочу гілку: використовуємо оновлений 'origin'
-                      git push origin "\$CHART_BRANCH"
+                        git add "\$CHART_FILE"
+                        git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
+                        
+                        # Push у робочу гілку
+                        git push origin "\$CHART_BRANCH"
 
-                      # 3) Мержимо lesson-8-9 -> main
-                      git fetch origin "\$MAIN_BRANCH"
-                      git checkout "\$MAIN_BRANCH"
-                      git merge --ff-only "\$CHART_BRANCH"
-                      
-                      # Push у головну гілку
-                      git push origin "\$MAIN_BRANCH"
-                  """
-              }
-          }
-      }
-  }
+                        # 3) Мержимо lesson-8-9 -> main
+                        git fetch origin "\$MAIN_BRANCH"
+                        git checkout "\$MAIN_BRANCH"
+                        git merge --ff-only "\$CHART_BRANCH"
+                        
+                        # Push у головну гілку
+                        git push origin "\$MAIN_BRANCH"
+                    """
+                }
+            }
+        }
+    }
 
 
   }
