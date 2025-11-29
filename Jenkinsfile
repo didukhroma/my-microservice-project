@@ -97,62 +97,53 @@ spec:
     }
 
 stage('Update Chart Tag (GitOps)') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'github-pat', 
-            usernameVariable: 'GIT_USERNAME', 
-            passwordVariable: 'GIT_TOKEN'
-        )]) {
-            container('git') {
-                // ВИПРАВЛЕННЯ 1: Створюємо змінну GITOPS_PUSH_URL
-                // Ця команда виконується в Groovy, тому токен буде інтерпольовано
-                // Це все ще викликатиме попередження Groovy, але це необхідно
-                sh "GITOPS_PUSH_URL=https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
-                
-                sh """
-                    set -eux
+  steps {
+    container('git') {
+      withCredentials([
+        usernamePassword(
+          credentialsId: 'github-pat',   // <-- твій ID creds
+          usernameVariable: 'GIT_USER',
+          passwordVariable: 'GIT_TOKEN'
+        )
+      ]) {
+        sh '''
+          set -eux
 
-                    # Використовуємо $WORKSPACE для безпеки (як ми це вже робили, але тут для повноти)
-                    git config --global --add safe.directory /workspace/workspace/Django-Kaniko-CI-CD
-                    
-                    # ВИПРАВЛЕННЯ 2: Клонуємо за URL, який містить токен (GITOPS_PUSH_URL)
-                    # \$GITOPS_PUSH_URL буде доступна як змінна середовища
-                    rm -rf gitops-repo || true
-                    git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
+          rm -rf gitops-repo || true
 
-                    cd gitops-repo
+          # Формуємо URL з токеном ВСЕРЕДИНІ shell, а не в Groovy
+          REPO_URL="https://${GIT_USER}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
 
-                    CHART_FILE="charts/django-app/values.yaml"
+          # 1) Клонуємо lesson-8-9 з авторизацією
+          git clone --depth 1 --branch "$CHART_BRANCH" "$REPO_URL" gitops-repo
 
-                    # 1) Оновлюємо тег у values.yaml
-                    sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
-                    rm -f charts/django-app/values.yaml.bak
+          cd gitops-repo
 
-                    # 2) Коміт у lesson-8-9
-                    git config user.email "\$COMMIT_EMAIL"
-                    git config user.name "\$COMMIT_NAME"
+          CHART_FILE="charts/django-app/values.yaml"
 
-                    git add "\$CHART_FILE"
-                    git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
-                    
-                    # ВИПРАВЛЕННЯ 3: Push використовує URL з токеном. 
-                    # Оскільки репозиторій клонувався з URL, що містить токен, 'origin' вже правильний.
-                    # Але для гарантії використовуємо повний push
-                    git push "\$GITOPS_REPO_URL" "\$CHART_BRANCH"
+          # 2) Оновлюємо тег у values.yaml
+          sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" "$CHART_FILE"
+          rm -f "$CHART_FILE.bak"
 
-                    # 3) Мержимо lesson-8-9 -> main
-                    git fetch origin "\$MAIN_BRANCH"
-                    git checkout "\$MAIN_BRANCH"
-                    git merge --ff-only "\$CHART_BRANCH"
-                    
-                    # Push у головну гілку
-                    git push "\$GITOPS_REPO_URL" "\$MAIN_BRANCH"
-                """
-            }
-        }
+          git config user.email "$COMMIT_EMAIL"
+          git config user.name "$COMMIT_NAME"
+
+          git add "$CHART_FILE"
+          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
+
+          # 3) Пушимо lesson-8-9 з тим же URL (з токеном)
+          git push "$REPO_URL" "$CHART_BRANCH"
+
+          # 4) Мержимо lesson-8-9 -> main (fast-forward)
+          git fetch "$REPO_URL" "$MAIN_BRANCH"
+          git checkout "$MAIN_BRANCH"
+          git merge --ff-only "$CHART_BRANCH"
+          git push "$REPO_URL" "$MAIN_BRANCH"
+        '''
+      }
     }
+  }
 }
-
 
   }
 }
