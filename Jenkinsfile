@@ -138,7 +138,7 @@ stage('Update Chart Tag (GitOps)') {
           git checkout "$MAIN_BRANCH"
 
           # 5) Fast-forward merge lesson-8-9 -> main
-          git merge --ff-only "$CHART_BRANCH"
+          git merge --ff-only "$CHART_BRANCH" || git merge --allow-unrelated-histories --no-edit "$CHART_BRANCH"
 
           # 6) Пушимо main
           git push "$REPO_URL" "$MAIN_BRANCH"
