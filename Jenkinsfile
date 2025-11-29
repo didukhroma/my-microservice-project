@@ -39,8 +39,9 @@ spec:
 
     // GitOps / Helm chart repo (МОЖЕ бути інший репозиторій)
     GITOPS_REPO_URL = "https://github.com/didukhroma/my-microservice-project.git"
-    CHART_BRANCH    = "main"               // або lesson-7, як тобі треба
-    CHART_PATH      = "lesson-7/charts/django-app"
+    CHART_BRANCH    = "lesson-8-9"          
+    MAIN_BRANCH     = "main"                
+    CHART_PATH      = "charts/django-app"
 
     COMMIT_EMAIL = "jenkins@example.com"
     COMMIT_NAME  = "Jenkins Pipeline"
@@ -101,23 +102,43 @@ spec:
           sh '''
             set -eux
 
+            # Клонуємо репозиторій з гілкою lesson-8-9
             rm -rf gitops-repo || true
             git clone --depth 1 --branch "$CHART_BRANCH" "$GITOPS_REPO_URL" gitops-repo
 
-            cd gitops-repo/"$CHART_PATH"
+            cd gitops-repo
 
-            sed -i.bak "s/^  tag: .*/  tag: $IMAGE_TAG/" values.yaml
+            # 1) Оновлюємо values.yaml у charts/django-app
+            cd "$CHART_PATH"
+
+            # міняємо тільки image.tag: "..."
+            sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" values.yaml
             rm -f values.yaml.bak
 
+            cd ..
+
+            # 2) Комітимо в lesson-8-9
             git config user.email "$COMMIT_EMAIL"
             git config user.name "$COMMIT_NAME"
 
-            git add values.yaml
-            git commit -m "chore(pipeline): Update Django-App chart tag to $IMAGE_TAG" || echo "No changes to commit"
+            git add "$CHART_PATH/values.yaml"
+            git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
+
             git push origin "$CHART_BRANCH"
+
+            # 3) Оновлюємо main з lesson-8-9 (fast-forward merge)
+            git fetch origin "$MAIN_BRANCH"
+            git checkout "$MAIN_BRANCH"
+
+            # спробуємо fast-forward; якщо не вийде – впаде, щоб ти бачив конфлікт
+            git merge --ff-only "$CHART_BRANCH"
+
+            git push origin "$MAIN_BRANCH"
           '''
         }
       }
     }
+
+
   }
 }
