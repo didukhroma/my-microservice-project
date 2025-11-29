@@ -101,7 +101,7 @@ stage('Update Chart Tag (GitOps)') {
     container('git') {
       withCredentials([
         usernamePassword(
-          credentialsId: 'github-jenkins',
+          credentialsId: 'github-pat',
           usernameVariable: 'GIT_USER',
           passwordVariable: 'GIT_TOKEN'
         )
