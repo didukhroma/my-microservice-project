@@ -97,39 +97,59 @@ spec:
     }
 
     stage('Update Chart Tag (GitOps)') {
-      steps {
-        container('git') {
-          sh '''
-            set -eux
+    steps {
+        // ВИПРАВЛЕННЯ 1: Використовуємо withCredentials для безпечної автентифікації Git
+        withCredentials([usernamePassword(
+            // Замініть 'github-pat-id' на ID вашого Jenkins Credential, де зберігається PAT
+            credentialsId: 'github-pat-id', 
+            usernameVariable: 'GIT_USERNAME', 
+            passwordVariable: 'GIT_TOKEN'
+        )]) {
+            container('git') {
+                // ВИПРАВЛЕННЯ 2: Замінюємо одинарні лапки на подвійні, щоб Jenkins інтерполював змінні
+                // І використовуємо екранування (\$) для змінних, які мають інтерпретуватися у bash
+                sh """
+                    set -eux
 
-            rm -rf gitops-repo || true
-            git clone --depth 1 --branch "$CHART_BRANCH" "$GITOPS_REPO_URL" gitops-repo
+                    # ВИПРАВЛЕННЯ 3: Встановлюємо URL з токеном для автентифікації
+                    GITOPS_PUSH_URL="https://\${GIT_USERNAME}:\${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
+                    
+                    rm -rf gitops-repo || true
+                    # Клонуємо за оригінальним URL, щоб не зберігати токен у конфігурації репозиторію
+                    git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_REPO_URL" gitops-repo
 
-            cd gitops-repo
+                    cd gitops-repo
 
-            CHART_FILE="charts/django-app/values.yaml"
+                    CHART_FILE="charts/django-app/values.yaml"
 
-            # 1) Оновлюємо тег у values.yaml
-            sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" "$CHART_FILE"
-            rm -f charts/django-app/values.yaml.bak
+                    # 1) Оновлюємо тег у values.yaml
+                    # Екранування подвійних лапок (\\") всередині sed
+                    sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
+                    rm -f charts/django-app/values.yaml.bak
 
-            # 2) Коміт у lesson-8-9
-            git config user.email "$COMMIT_EMAIL"
-            git config user.name "$COMMIT_NAME"
+                    # 2) Коміт у lesson-8-9
+                    git config user.email "\$COMMIT_EMAIL"
+                    git config user.name "\$COMMIT_NAME"
 
-            git add "$CHART_FILE"
-            git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
-            git push origin "$CHART_BRANCH"
+                    git add "\$CHART_FILE"
+                    # Використовуємо -m як резервний варіант, якщо коміту не було
+                    git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit"
+                    
+                    # Використовуємо GITOPS_PUSH_URL для Push
+                    git push "\$GITOPS_PUSH_URL" "\$CHART_BRANCH"
 
-            # 3) Мержимо lesson-8-9 -> main
-            git fetch origin "$MAIN_BRANCH"
-            git checkout "$MAIN_BRANCH"
-            git merge --ff-only "$CHART_BRANCH"
-            git push origin "$MAIN_BRANCH"
-          '''
+                    # 3) Мержимо lesson-8-9 -> main
+                    git fetch origin "\$MAIN_BRANCH"
+                    git checkout "\$MAIN_BRANCH"
+                    git merge --ff-only "\$CHART_BRANCH"
+                    
+                    # Використовуємо GITOPS_PUSH_URL для Push
+                    git push "\$GITOPS_PUSH_URL" "\$MAIN_BRANCH"
+                """
+            }
         }
-      }
     }
+}
 
 
 
