@@ -97,61 +97,57 @@ spec:
     }
 
 stage('Update Chart Tag (GitOps)') {
-    steps {
-        // Використовуємо Jenkins Credentials для безпечного отримання токена
-        withCredentials([usernamePassword(
-            credentialsId: 'github-pat', // Переконайтеся, що це правильний ID
-            usernameVariable: 'GIT_USERNAME', 
-            passwordVariable: 'GIT_TOKEN'
-        )]) {
-            container('git') {
-                // Створення URL з токеном, який буде використовуватися для clone/push
-                // Це призводить до попередження Groovy, але є необхідним для автентифікації
-                sh "GITOPS_PUSH_URL=https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
+  steps {
+    container('git') {
+      withCredentials([
+        usernamePassword(
+          credentialsId: 'github-jenkins',
+          usernameVariable: 'GIT_USER',
+          passwordVariable: 'GIT_TOKEN'
+        )
+      ]) {
+        sh '''
+          set -eux
 
-                sh """
-                    set -eux
+          rm -rf gitops-repo || true
 
-                    # 1. Встановлюємо безпечну директорію для Git (виправлення "dubious ownership")
-                    # Переконайтеся, що /workspace/workspace/Django-Kaniko-CI-CD є коректним шляхом до кореня пайплайну
-                    git config --global --add safe.directory /workspace/workspace/Django-Kaniko-CI-CD
-                    
-                    rm -rf gitops-repo
+          REPO_URL="https://${GIT_USER}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
 
-                    # 2. Клонуємо репозиторій, використовуючи URL, що містить токен (\$GITOPS_PUSH_URL)
-                    # \$CHART_BRANCH та \$GITOPS_PUSH_URL - змінні Groovy/Bash
-                    git clone --depth 1 --branch "\$CHART_BRANCH" "\$GITOPS_PUSH_URL" gitops-repo
+          # 1) Клонуємо lesson-8-9
+          git clone --depth 1 --branch "$CHART_BRANCH" "$REPO_URL" gitops-repo
 
-                    cd gitops-repo
+          cd gitops-repo
 
-                    CHART_FILE="charts/django-app/values.yaml"
+          CHART_FILE="charts/django-app/values.yaml"
 
-                    # 3. Оновлюємо тег у values.yaml
-                    sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"\$IMAGE_TAG\\"/" "\$CHART_FILE"
-                    rm -f charts/django-app/values.yaml.bak
+          # 2) Оновлюємо тег у values.yaml
+          sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" "$CHART_FILE"
+          rm -f "$CHART_FILE.bak"
 
-                    # 4. Коміт у гілку \$CHART_BRANCH
-                    git config user.email "\$COMMIT_EMAIL"
-                    git config user.name "\$COMMIT_NAME"
+          git config user.email "$COMMIT_EMAIL"
+          git config user.name "$COMMIT_NAME"
 
-                    git add "\$CHART_FILE"
-                    git commit -m "chore(pipeline): Update Django-App image tag to \$IMAGE_TAG" || echo "No changes to commit (skipping commit)"
-                    
-                    # 5. Push у робочу гілку (origin тепер містить токен завдяки клонуванню)
-                    git push origin "\$CHART_BRANCH"
+          git add "$CHART_FILE"
+          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
 
-                    # 6. Мержимо \$CHART_BRANCH -> \$MAIN_BRANCH
-                    git fetch origin "\$MAIN_BRANCH"
-                    git checkout "\$MAIN_BRANCH"
-                    git merge --ff-only "\$CHART_BRANCH" || echo "Failed to merge (non-fast-forward or conflicts)"
-                    
-                    # 7. Push у головну гілку
-                    git push origin "\$MAIN_BRANCH"
-                """
-            }
-        }
+          # 3) Пушимо lesson-8-9
+          git push "$REPO_URL" "$CHART_BRANCH"
+
+          # 4) Підтягуємо main і створюємо локальну гілку main
+          git fetch "$REPO_URL" "$MAIN_BRANCH:$MAIN_BRANCH"
+          git checkout "$MAIN_BRANCH"
+
+          # 5) Fast-forward merge lesson-8-9 -> main
+          git merge --ff-only "$CHART_BRANCH"
+
+          # 6) Пушимо main
+          git push "$REPO_URL" "$MAIN_BRANCH"
+        '''
+      }
     }
+  }
 }
+
 
   }
 }
