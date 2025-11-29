@@ -98,16 +98,15 @@ spec:
 
     stage('Update Chart Tag (GitOps)') {
     steps {
-        // ВИПРАВЛЕННЯ 1: Використовуємо withCredentials для безпечної автентифікації Git
+        
         withCredentials([usernamePassword(
-            // Замініть 'github-pat-id' на ID вашого Jenkins Credential, де зберігається PAT
-            credentialsId: 'github-pat-id', 
+            /
+            credentialsId: 'github-pat', 
             usernameVariable: 'GIT_USERNAME', 
             passwordVariable: 'GIT_TOKEN'
         )]) {
             container('git') {
-                // ВИПРАВЛЕННЯ 2: Замінюємо одинарні лапки на подвійні, щоб Jenkins інтерполював змінні
-                // І використовуємо екранування (\$) для змінних, які мають інтерпретуватися у bash
+                
                 sh """
                     set -eux
 
