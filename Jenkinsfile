@@ -96,57 +96,44 @@ spec:
       }
     }
 
-stage('Update Chart Tag (GitOps)') {
+stage('Update Chart Tag in Git (lesson-8-9)') {
   steps {
     container('git') {
       withCredentials([
         usernamePassword(
-          credentialsId: 'github-pat',
+          credentialsId: 'github-pat',      // <-- ID кредів у Jenkins
           usernameVariable: 'GIT_USER',
-          passwordVariable: 'GIT_TOKEN'
+          passwordVariable: 'GIT_PAT'
         )
       ]) {
         sh '''
           set -eux
+          rm -rf chart-repo
 
-          rm -rf gitops-repo || true
+          # Клонуємо наш репозиторій у гілці CHART_BRANCH (lesson-8-9)
+          git clone --branch "$CHART_BRANCH" \
+            https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git \
+            chart-repo
 
-          REPO_URL="https://${GIT_USER}:${GIT_TOKEN}@github.com/didukhroma/my-microservice-project.git"
+          cd chart-repo/$CHART_PATH
 
-          # 1) Клонуємо lesson-8-9
-          git clone --depth 1 --branch "$CHART_BRANCH" "$REPO_URL" gitops-repo
-
-          cd gitops-repo
-
-          CHART_FILE="charts/django-app/values.yaml"
-
-          # 2) Оновлюємо тег у values.yaml
-          sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" "$CHART_FILE"
-          rm -f "$CHART_FILE.bak"
+          # Оновлюємо тег у values.yaml (байдуже скільки пробілів перед tag)
+          sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \"$IMAGE_TAG\"/" values.yaml
 
           git config user.email "$COMMIT_EMAIL"
           git config user.name "$COMMIT_NAME"
 
-          git add "$CHART_FILE"
-          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
+          git add values.yaml
+          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
 
-          # 3) Пушимо lesson-8-9
-          git push "$REPO_URL" "$CHART_BRANCH"
-
-          # 4) Підтягуємо main і створюємо локальну гілку main
-          git fetch "$REPO_URL" "$MAIN_BRANCH:$MAIN_BRANCH"
-          git checkout "$MAIN_BRANCH"
-
-          # 5) Fast-forward merge lesson-8-9 -> main
-          git merge --ff-only "$CHART_BRANCH" || git merge --allow-unrelated-histories --no-edit "$CHART_BRANCH"
-
-          # 6) Пушимо main
-          git push "$REPO_URL" "$MAIN_BRANCH"
+          # Пушимо поточну гілку (lesson-8-9)
+          git push origin HEAD
         '''
       }
     }
   }
 }
+
 
 
   }
