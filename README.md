@@ -183,16 +183,20 @@ Argo CD автоматично створить Application для Django
 ```
 
 3. **Процес CI/CD**
-Continuous Integration (Jenkins)
 
-Тригер: Push у гілку dev
-Збірка: Kaniko збирає Docker-образ з Django-кодом
-Публікація: Образ публікується в ECR з тегом build number
-Оновлення: Jenkins оновлює values.yaml у гілці lesson-8-9
-Commit: Зміни комітяться назад у Git-репозиторій
-Continuous Deployment (Argo CD)
+*Continuous Integration (Jenkins)*\
+Тригер: Push у гілку dev \
+Збірка: Kaniko збирає Docker-образ з Django-кодом \
+Публікація: Образ публікується в ECR з тегом build number \
+Оновлення: Jenkins оновлює values.yaml у гілці lesson-8-9 \
+Commit: Зміни комітяться назад у Git-репозиторій \
 
-Моніторинг: Argo CD відстежує зміни в гілці lesson-8-9
-Синхронізація: Автоматично застосовує зміни в Kubernetes
-Деплой: Новий Docker-образ розгортається в кластері
-Масштабування: HPA автоматично масштабує поди за навантаженням
+*Continuous Deployment (Argo CD)* \
+Моніторинг: Argo CD відстежує зміни в гілці lesson-8-9 \
+Синхронізація: Автоматично застосовує зміни в Kubernetes \
+Деплой: Новий Docker-образ розгортається в кластері \
+Масштабування: HPA автоматично масштабує поди за навантаженням \
+
+![alt text](asserts/img-1.png)
+
+![alt text](asserts/img-2.png)
