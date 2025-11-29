@@ -102,42 +102,35 @@ spec:
           sh '''
             set -eux
 
-            # Клонуємо репозиторій з гілкою lesson-8-9
             rm -rf gitops-repo || true
             git clone --depth 1 --branch "$CHART_BRANCH" "$GITOPS_REPO_URL" gitops-repo
 
             cd gitops-repo
 
-            # 1) Оновлюємо values.yaml у charts/django-app
-            cd "$CHART_PATH"
+            CHART_FILE="charts/django-app/values.yaml"
 
-            # міняємо тільки image.tag: "..."
-            sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" values.yaml
-            rm -f values.yaml.bak
+            # 1) Оновлюємо тег у values.yaml
+            sed -i.bak "s/^  tag: \\".*\\"/  tag: \\"$IMAGE_TAG\\"/" "$CHART_FILE"
+            rm -f charts/django-app/values.yaml.bak
 
-            cd ..
-
-            # 2) Комітимо в lesson-8-9
+            # 2) Коміт у lesson-8-9
             git config user.email "$COMMIT_EMAIL"
             git config user.name "$COMMIT_NAME"
 
-            git add "$CHART_PATH/values.yaml"
+            git add "$CHART_FILE"
             git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "No changes to commit"
-
             git push origin "$CHART_BRANCH"
 
-            # 3) Оновлюємо main з lesson-8-9 (fast-forward merge)
+            # 3) Мержимо lesson-8-9 -> main
             git fetch origin "$MAIN_BRANCH"
             git checkout "$MAIN_BRANCH"
-
-            # спробуємо fast-forward; якщо не вийде – впаде, щоб ти бачив конфлікт
             git merge --ff-only "$CHART_BRANCH"
-
             git push origin "$MAIN_BRANCH"
           '''
         }
       }
     }
+
 
 
   }
