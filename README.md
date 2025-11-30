@@ -1,88 +1,93 @@
-# Даний проєкт реалізує повний CI/CD-процес для Django-застосунку з використанням сучасних DevOps-практик та інструментів:
+# Final Project DevOps – AWS + Terraform + EKS + Jenkins + Argo CD + Prometheus/Grafana + Django
 
-* Terraform – інфраструктура як код (IaC) для створення та управління хмарними ресурсами.
-* Jenkins – система Continuous Integration для автоматизованої збірки та публікації Docker-образів.
-* Argo CD – інструмент Continuous Deployment, що забезпечує GitOps-підхід до доставки застосунку.
-* Kubernetes (EKS) – платформа оркестрації контейнерів для масштабованого розгортання.
-* Helm – управління конфігураціями Kubernetes через чарт-пакети.
-* RDS/Aurora – інтеграція з керованою базою даних AWS (універсальний модуль для роботи з різними сервісами).
+Цей проєкт реалізує повний шлях від інфраструктури до CI/CD та моніторингу для Django-застосунку в AWS.
+
+## Архітектура
+
+Інфраструктура описана за допомогою **Terraform** та розгортається в AWS (регіон `us-west-2`):
+
+- **VPC**
+
+  - Приватні та публічні підмережі
+  - Internet Gateway, маршрути
+
+- **EKS (Kubernetes)**
+
+  - Кластер EKS
+  - Node Group (наприклад, `t3.medium`, autoscaling)
+  - AWS EBS CSI driver для persistent volume
+
+- **ECR**
+
+  - Репозиторій для Docker-образів Django-застосунку
+
+- **RDS (PostgreSQL / Aurora)**
+
+  - База даних для Django
+  - Доступ тільки з EKS (через VPC / SG)
+
+- **Jenkins** (CI)
+
+  - Розгорнутий у namespace `jenkins` через Helm
+  - Пайплайн збирає Docker-образ (Kaniko), пушить у ECR, оновлює Helm-чарт
+
+- **Argo CD** (CD / GitOps)
+
+  - namespace `argocd`
+  - Helm chart `argocd-apps` створює `Application` для `django-app`
+  - Витягує Helm-чарт із репозиторію та застосовує до кластера
+
+- **Monitoring**
+
+  - Prometheus + exporters
+  - Grafana (namespace `monitoring`)
+  - Базові дашборди для моніторингу кластера та застосунків
+
+- **Django App**
+  - Код у директорії `Django/`
+  - Dockerfile для контейнеризації
+  - Helm-чарт: `charts/django-app`
+  - CI/CD → розгортання в namespace `django-app`
 
 **Структура проєкту**
+
 ```
 Project/
 │
 ├── main.tf         # Головний файл для підключення модулів
-├── backend.tf        # Налаштування бекенду для стейтів (S3 + DynamoDB
-├── outputs.tf        # Загальні виводи ресурсів
-│
-├── modules/         # Каталог з усіма модулями
-│  ├── s3-backend/     # Модуль для S3 та DynamoDB
-│  │  ├── s3.tf      # Створення S3-бакета
-│  │  ├── dynamodb.tf   # Створення DynamoDB
-│  │  ├── variables.tf   # Змінні для S3
-│  │  └── outputs.tf    # Виведення інформації про S3 та DynamoDB
-│  │
+├── backend.tf      # Налаштування бекенду для стейтів (S3 + DynamoDB
+├── outputs.tf      # Загальні виводи ресурсів
+├── secrets.yaml    # Налаштування доступу
+├── modules/        # Каталог з усіма модулями
+│  ├── s3-backend/  # Модуль для S3 та DynamoDB
 │  ├── vpc/         # Модуль для VPC
-│  │  ├── vpc.tf      # Створення VPC, підмереж, Internet Gateway
-│  │  ├── routes.tf    # Налаштування маршрутизації
-│  │  ├── variables.tf   # Змінні для VPC
-│  │  └── outputs.tf  
 │  ├── ecr/         # Модуль для ECR
-│  │  ├── ecr.tf      # Створення ECR репозиторію
-│  │  ├── variables.tf   # Змінні для ECR
-│  │  └── outputs.tf    # Виведення URL репозиторію
-│  │
-│  ├── eks/           # Модуль для Kubernetes кластера
-│  │  ├── eks.tf        # Створення кластера
-│  │  ├── aws_ebs_csi_driver.tf # Встановлення плагіну csi drive
-│  │  ├── variables.tf   # Змінні для EKS
-│  │  └── outputs.tf    # Виведення інформації про кластер
-│  │
+│  ├── eks/         # Модуль для Kubernetes кластера
 │  ├── rds/         # Модуль для RDS
-│  │  ├── rds.tf      # Створення RDS бази даних  
-│  │  ├── aurora.tf    # Створення aurora кластера бази даних  
-│  │  ├── shared.tf    # Спільні ресурси  
-│  │  ├── variables.tf   # Змінні (ресурси, креденшели, values)
-│  │  └── outputs.tf  
-│  │ 
-│  ├── jenkins/       # Модуль для Helm-установки Jenkins
-│  │  ├── jenkins.tf    # Helm release для Jenkins
-│  │  ├── variables.tf   # Змінні (ресурси, креденшели, values)
-│  │  ├── providers.tf   # Оголошення провайдерів
-│  │  ├── values.yaml   # Конфігурація jenkins
-│  │  └── outputs.tf    # Виводи (URL, пароль адміністратора)
-│  │ 
-│  └── argo_cd/       # ✅ Новий модуль для Helm-установки Argo CD
-│    ├── jenkins.tf    # Helm release для Jenkins
-│    ├── variables.tf   # Змінні (версія чарта, namespace, repo URL тощо)
-│    ├── providers.tf   # Kubernetes+Helm. переносимо з модуля jenkins
-│    ├── values.yaml   # Кастомна конфігурація Argo CD
-│    ├── outputs.tf    # Виводи (hostname, initial admin password)
-│		  └──charts/         # Helm-чарт для створення app'ів
-│ 	 	  ├── Chart.yaml
-│	 	  ├── values.yaml     # Список applications, repositories
-│			  └── templates/
-│		    ├── application.yaml
-│		    └── repository.yaml
+│  ├── jenkins/     # Модуль для Helm-установки Jenkins 
+│  ├── monitoring/  # Модуль для Prometheus та Grafana 
+│  └── argo_cd/     # Модуль для Helm-установки Argo CD
 ├── charts/
 │  └── django-app/
 │    ├── templates/
 │    │  ├── deployment.yaml
 │    │  ├── service.yaml
+│    │  ├── postgress.yaml
 │    │  ├── configmap.yaml
 │    │  └── hpa.yaml
 │    ├── Chart.yaml
-│    └── values.yaml   # ConfigMap зі змінними середовища
-└──Django
-			 ├── app\
-			 ├── Dockerfile
-			 ├── Jenkinsfile
-			 └── docker-compose.yaml
+│    └── values.yaml  
+└── Django/
+    ├── Jenkinsfile       # Jenkins pipeline (CI/CD)
+    ├── Dockerfile        # Docker-образ Django
+    └── django-app/...    # Код Django-застосунку
 
 ```
 
+---
 
 **Необхідні пакети:**
+
 - AWS CLI
 - Terraform
 - kubectl
@@ -90,303 +95,261 @@ Project/
 - Docker
 - Git
 
+---
 
-# Terraform-модуль `rds`
+## 1. **Підготовка середовища**
 
-Універсальний Terraform-модуль для створення бази даних в AWS, який може розгортати:
+_Клонування репозиторію та перехід у гілку:_
 
-- **звичайний RDS інстанс** (PostgreSQL / MySQL), або  
-- **Aurora кластер** з репліками,
+```
+git clone https://github.com/didukhroma/my-microservice-project.git
+cd my-microservice-project
+git checkout final_project
+```
 
-в залежності від прапора `use_aurora`.
+_Налаштування AWS CLI_
 
-Модуль автоматично створює:
+```
+aws configure
+```
 
-- **DB Subnet Group** (на основі приватних сабнетів),
-- **Security Group** з доступом за CIDR та/або з інших SG,
-- **Parameter Group** для RDS або Aurora,
-- RDS **instance** або **Aurora cluster + instances**.
+_Перевірте підключення_
+
+```
+aws sts get-caller-identity
+```
+
+_Підготовка секретів_
+
+```
+echo -n "YOUR_AWS_ACCESS_KEY_ID" | base64
+echo -n "YOUR_AWS_SECRET_ACCESS_KEY" | base64
+
+```
+
+_Оновіть файл secrets.yaml вашими закодованими значеннями:_
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: jenkins
+type: Opaque
+data:
+  aws-access-key-id: <BASE64_ENCODED_ACCESS_KEY>
+  aws-secret-access-key: <BASE64_ENCODED_SECRET_KEY>
+```
+
+_Застосування секретів_
+
+```
+kubectl apply -f kubernetes-secrets.yaml
+kubectl get secrets -n jenkins
+
+```
+
+_Ініціалізація Terraform:_
+
+```
+terraform init
+
+```
+
+Перевірка плану:
+
+```
+terraform plan
+```
 
 ---
 
-## Приклад використання модуля
+## 2. **Розгортання інфраструктури**
 
-### 1. Класичний RDS PostgreSQL
+_Запуск розгортання:_
 
-```hcl
-module "rds" {
-  source = "./modules/rds"
-
-  project_name = "final-project-devops"
-  environment  = "dev"
-
-  # Тип БД
-  use_aurora     = false
-  engine         = "postgres"
-  engine_version = "16.9"
-  instance_class = "db.t3.micro"
-
-  # База та креденшіали
-  db_name         = "djangodb"
-  master_username = "djangouser"
-  master_password = null # якщо null – пароль згенерується random_password
-
-  # Мережа
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnet_ids
-
-  # Доступ
-  allowed_cidr_blocks = [
-    "10.0.4.0/24",
-    "10.0.5.0/24",
-    "10.0.6.0/24",
-  ]
-
-  # Додаткові налаштування
-  multi_az                = false
-  storage_encrypted       = true
-  allocated_storage       = 20
-  storage_type            = "gp2"
-  backup_retention_period = 3
-  backup_window           = "03:00-04:00"
-  maintenance_window      = "sun:04:00-sun:05:00"
-  deletion_protection     = false
-  skip_final_snapshot     = true
-  copy_tags_to_snapshot   = true
-  monitoring_interval     = 0
-  performance_insights_enabled = false
-
-  custom_db_parameters = [
-    {
-      name  = "max_connections"
-      value = "200"
-    },
-    {
-      name  = "checkpoint_completion_target"
-      value = "0.9"
-    }
-  ]
-
-  tags = {
-    Project     = "final-project-devops"
-    Environment = "dev"
-    ManagedBy   = "terraform"
-    Module      = "rds"
-    Purpose     = "django-database"
-  }
-}
+```
+terraform apply
 ```
 
-### 2. Aurora PostgreSQL кластер з репліками
-```module "rds" {
-  source = "./modules/rds"
+Після успішного apply будуть створені:
 
-  project_name = "final-project-devops"
-  environment  = "prod"
+- VPC, EKS, RDS, ECR
 
-  # Вмикаємо Aurora
-  use_aurora     = true
-  engine         = "postgres"
-  engine_version = "16.2"
-  instance_class = "db.r6g.large"
+- Jenkins (namespace: jenkins)
 
-  db_name         = "appdb"
-  master_username = "appuser"
-  master_password = null
+- Argo CD (namespace: argocd)
 
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnet_ids
+- Prometheus + Grafana (namespace: monitoring)
 
-  allowed_security_group_ids = [
-    module.eks.worker_sg_id, # приклад
-  ]
+- Застосунок (namespace django-app)
 
-  aurora_replica_count = 2
+- Argo CD Application для Django (django-app)
 
-  multi_az                = true            # для Aurora – multi-AZ на рівні кластеру
-  storage_encrypted       = true
-  backup_retention_period = 7
-  deletion_protection     = true
-  skip_final_snapshot     = false
-  copy_tags_to_snapshot   = true
+_Перевірка основних ресурсів_
 
-  monitoring_interval          = 60
-  performance_insights_enabled = true
-
-  custom_db_parameters = [
-    {
-      name  = "max_connections"
-      value = "500"
-    }
-  ]
-
-  tags = {
-    Project     = "final-project-devops"
-    Environment = "prod"
-    ManagedBy   = "terraform"
-    Module      = "rds"
-    Purpose     = "app-database"
-  }
-}
 ```
-### 3 Опис змінних
-| Змінна                         | Тип                             | Обов’язкова | За замовчуванням        | Опис                                                                                                                 |
-| ------------------------------ | ------------------------------- | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `project_name`                 | `string`                        | ні          | `"final-project-devops"`          | Назва проєкту, використовується в іменах ресурсів і тегах.                                                           |
-| `environment`                  | `string`                        | ні          | `"dev"`                 | Назва середовища: `dev`, `stage`, `prod` тощо.                                                                       |
-| `use_aurora`                   | `bool`                          | ні          | `false`                 | Якщо `true` — створюється Aurora cluster, якщо `false` — звичайний RDS instance.                                     |
-| `engine`                       | `string`                        | ні          | `"postgres"`            | Тип СУБД: підтримуються `"postgres"` або `"mysql"`.                                                                  |
-| `engine_version`               | `string`                        | ні          | `"13.7"`                | Версія engine (наприклад `"16.9"` для PostgreSQL). Впливає на `engine` ресурсу та сім’ю parameter group.             |
-| `instance_class`               | `string`                        | ні          | `"db.t3.micro"`         | Клас інстансу, наприклад `db.t3.micro`, `db.m5.large` тощо.                                                          |
-| `allocated_storage`            | `number`                        | ні          | `20`                    | Об’єм диску в GB для **класичного RDS**. Для Aurora ігнорується.                                                     |
-| `storage_type`                 | `string`                        | ні          | `"gp2"`                 | Тип storage для RDS (наприклад, `gp2`, `gp3`, `io1`).                                                                |
-| `storage_encrypted`            | `bool`                          | ні          | `true`                  | Чи шифрувати зберігання даних (RDS/Aurora).                                                                          |
-| `db_name`                      | `string`                        | ні          | `"djangodb"`            | Назва бази даних, яка буде створена.                                                                                 |
-| `master_username`              | `string`                        | ні          | `"admin"`               | Master user для БД.                                                                                                  |
-| `master_password`              | `string` (sensitive)            | ні          | `null`                  | Пароль master user. Якщо `null`, модуль генерує пароль за допомогою `random_password`.                               |
-| `multi_az`                     | `bool`                          | ні          | `false`                 | Для RDS: чи вмикати Multi-AZ. Для Aurora кластер inherently multi-AZ, але прапор може використовуватися для політик. |
-| `backup_retention_period`      | `number`                        | ні          | `7`                     | Кількість днів зберігання бекапів.                                                                                   |
-| `backup_window`                | `string`                        | ні          | `"03:00-04:00"`         | Вікно для автоматичних бекапів у форматі `HH:MM-HH:MM`.                                                              |
-| `maintenance_window`           | `string`                        | ні          | `"sun:04:00-sun:05:00"` | Вікно для обслуговування (патчі/оновлення).                                                                          |
-| `vpc_id`                       | `string`                        | **так**     | –                       | ID VPC, де буде створено БД та security group.                                                                       |
-| `subnet_ids`                   | `list(string)`                  | **так**     | –                       | Список **приватних** subnet IDs для DB Subnet Group.                                                                 |
-| `allowed_security_group_ids`   | `list(string)`                  | ні          | `[]`                    | Список SG IDs, яким дозволено доступ до БД (наприклад, SG нод EKS).                                                  |
-| `allowed_cidr_blocks`          | `list(string)`                  | ні          | `[]`                    | Список CIDR-блоків, яким дозволено доступ до БД. Зручно для внутрішніх підмереж VPC.                                 |
-| `port`                         | `number`                        | ні          | `null`                  | Порт БД. Якщо `null`, використовується `5432` для Postgres або `3306` для MySQL.                                     |
-| `deletion_protection`          | `bool`                          | ні          | `false`                 | Захист від видалення. Якщо `true`, Terraform не зможе видалити БД без ручних змін.                                   |
-| `skip_final_snapshot`          | `bool`                          | ні          | `true`                  | Чи пропускати фінальний snapshot при видаленні БД. Для prod зазвичай ставлять `false`.                               |
-| `copy_tags_to_snapshot`        | `bool`                          | ні          | `true`                  | Чи копіювати теги БД на snapshot’и.                                                                                  |
-| `monitoring_interval`          | `number`                        | ні          | `0`                     | Інтервал Enhanced Monitoring в секундах. `0` = вимкнено.                                                             |
-| `performance_insights_enabled` | `bool`                          | ні          | `false`                 | Чи вмикати Performance Insights. Для prod може бути корисно, але дорожче.                                            |
-| `tags`                         | `map(string)`                   | ні          | `{}`                    | Додаткові теги для всіх створених ресурсів.                                                                          |
-| `aurora_replica_count`         | `number`                        | ні          | `1`                     | Кількість Aurora instances (реплік). Використовується лише якщо `use_aurora = true`.                                 |
-| `custom_db_parameters`         | `list(object({ name, value }))` | ні          | `[]`                    | Список кастомних параметрів, які будуть застосовані до parameter group (RDS або Aurora).                             |
+kubectl get ns
+kubectl get all -n jenkins
+kubectl get all -n argocd
+kubectl get all -n monitoring
+kubectl get all -n django-app
 
-
-Як змінити тип БД, engine, клас інстансу тощо
-1. Перехід між RDS та Aurora
-
-Звичайний RDS:
-```
-use_aurora = false
 ```
 
-Модуль створить:
+---
 
-* aws_db_instance
+## 3. **Доступ до Jenkins (CI)**
 
-* aws_db_parameter_group
+_Port-forward:_
 
-* aws_db_subnet_group
-
-* aws_security_group
-
-Aurora Cluster:
-```
-use_aurora = true
-aurora_replica_count = 2 # кількість інстансів у кластері
 ```
 
-Модуль створить:
-
-* aws_rds_cluster
-
-* aws_rds_cluster_instance (N штук)
-
-* aws_rds_cluster_parameter_group
-
-* aws_db_subnet_group
-
-* aws_security_group
-
-⚠️ Перемикання use_aurora з false на true (або навпаки) зазвичай призведе до destroy + create БД. Для продакшену потрібна окрема стратегія міграції.
-
-2. Зміна типу engine (PostgreSQL ↔ MySQL)
-
-Для PostgreSQL:
-```
-engine         = "postgres"
-engine_version = "16.9"
+kubectl port-forward svc/jenkins 8080:8080 -n jenkins
 ```
 
-Для MySQL:
+_Відкрити в браузері:_
+
 ```
-engine         = "mysql"
-engine_version = "8.0.35"
-```
+http://localhost:8080
 
-Модуль:
-
-* сам обере правильний порт (5432 чи 3306, якщо var.port = null),
-
-* побудує правильне parameter_group family (наприклад, postgres16, mysql8 чи aurora-postgresql16, aurora-mysql8).
-
-Важливо, щоб engine_version відповідала реально існуючій сім’ї параметрів в AWS. Якщо сім’ї ще немає (наприклад, дуже нова версія), може знадобитись ручна правка сім’ї.
-
-3. Зміна класу інстансу
-```
-instance_class = "db.t3.micro"   # dev
-instance_class = "db.m6g.large"  # prod
 ```
 
-Це впливає на:
+_Початковий пароль admin (якщо використовується стандартний Jenkins chart):_
 
-* aws_db_instance (RDS),
-
-* aws_rds_cluster_instance (Aurora).
-
-При зміні класу інстансу Terraform виконає modify ресурсу (можливий короткий downtime, залежно від налаштувань).
-
-4. Налаштування продуктивності та HA
-
-Multi-AZ (для звичайної RDS):
 ```
-multi_az = true
+kubectl get secret jenkins -n jenkins -o jsonpath='{.data.jenkins-admin-password}' | base64 -d; echo
 ```
 
-Бекапи та вікна:
-```
-backup_retention_period = 7
-backup_window           = "03:00-04:00"
-maintenance_window      = "sun:04:00-sun:05:00"
-```
+_Налаштування Pipeline:_
 
-Шифрування, захист та snapshot’и:
-```
-storage_encrypted     = true
-deletion_protection   = true
-skip_final_snapshot   = false
-copy_tags_to_snapshot = true
-```
+New Item → Pipeline \
+Pipeline script from SCM \
+Git Repository: https://github.com/<YOUR_REPOSITORY>.git \
+Branch: YOUR_REPOSITORY_BRANCH \
+Script Path: Django/Jenkinsfile
 
-Enhanced Monitoring та Performance Insights:
-```
-monitoring_interval          = 60
-performance_insights_enabled = true
-```
-5. Кастомні параметри БД
+У Jenkins налаштований pipeline (Jenkinsfile у Django/Jenkinsfile), який:
 
-Через custom_db_parameters можна змінювати параметри у parameter group:
+- клонує код із гілки final_project;
+- збирає Docker-образ за допомогою Kaniko;
+- пушить образ у ECR:
+- final-project-devops-django-app:v1.0.<BUILD_NUMBER>;
+- оновлює charts/django-app/values.yaml (поле tag);
+- пушить зміну у Git → Argo CD підхоплює нову версію образу.
+
+---
+
+## 4. **Доступ до Argo CD (CD / GitOps)**
+
+_Port-forward:_
+
 ```
-custom_db_parameters = [
-  {
-    name  = "max_connections"
-    value = "200"
-  },
-  {
-    name  = "work_mem"
-    value = "16MB"
-  }
-]
+kubectl port-forward svc/argocd-server 8081:443 -n argocd
 ```
 
-Модуль однаково додає ці параметри:
+_Відкрити в браузері:_
 
-* у aws_db_parameter_group (якщо use_aurora = false), або
+```
+http://localhost:8081
+```
 
-* у aws_rds_cluster_parameter_group (якщо use_aurora = true).
+_Початковий пароль admin:_
 
-Цей модуль можна повторно використовувати в різних середовищах (dev/stage/prod), змінюючи тільки вхідні змінні — логику створення інфраструктури він бере на себе.
-Якщо треба, його легко розширити (наприклад, додати IAM-ролі для моніторингу, KMS key для шифрування, окремі параметри для prod).
+```
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d; echo
+```
 
-![alt text](/asserts/img-3.png)
+Після логіну в Argo CD видно Application:
+
+- django-app
+
+- Source → GitHub (final_project, charts/django-app)
+
+- Destination → namespace: django-app
+
+Argo CD синхронізує Helm-чарт і розгортає Django-застосунок в EKS.
+
+---
+
+## 5. **Моніторинг: Prometheus + Grafana**
+
+### Prometheus
+
+_Port-forward (якщо треба зайти напряму):_
+
+```
+ kubectl port-forward svc/prometheus-server 9090:80 -n monitoring
+```
+
+\_Перевірка метрик (up, kube\_\_, тощо) через:\*
+
+```
+ http://localhost:9090
+```
+
+### Grafana
+
+_Port-forward:_
+
+```
+kubectl port-forward svc/grafana 3000:80 -n monitoring
+```
+
+_Вхід:_
+
+```
+ http://localhost:3000
+```
+
+логін/пароль — згідно з modules/monitoring/values (наприклад, admin / Admin12345!!, якщо так задано).
+
+На дашбордах можна переглядати:
+
+- стан кластеру EKS;
+
+- статуси pod’ів;
+
+- ресурси Django-застосунку.
+
+## 6. **CI/CD: повний потік**
+
+1. Розробник пушить зміни в гілку final_project (код або Dockerfile / Helm values).
+
+2. Jenkins pipeline (з Django/Jenkinsfile):
+
+- Checkout App Code → клон repo.
+
+- Build & Push Docker Image to ECR → Kaniko збирає образ із Django/Dockerfile, пушить у ECR.
+
+- Update Chart Tag in Git (GitOps) → оновлює charts/django-app/values.yaml (tag: v1.0.<BUILD_NUMBER>), пушить у GitHub.
+
+3. Argo CD:
+
+- відстежує репозиторій (final_project, charts/django-app);
+
+- бачить новий тег → синхронізує Application;
+
+- оновлює Deployment у namespace django-app на новий образ.
+
+4. Prometheus + Grafana:
+
+- збирають метрики з кластера та застосунку;
+
+- на дашбордах видно статус релізів, ресурси, навантаження.
+
+## 7. **Видалення інфраструктури (важливо!)**
+
+⚠️ При роботі з хмарою завжди видаляйте невикористані ресурси, щоб уникнути зайвих витрат.
+
+Після завершення роботи з проєктом:
+
+```
+terraform destroy -auto-approve
+```
+
+![Alt text](/asserts/img-1.png)
+
+![Alt text](/asserts/img-2.png)
+
+![Alt text](/asserts/img-3.png)
