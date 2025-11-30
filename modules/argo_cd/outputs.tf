@@ -36,3 +36,5 @@ data "kubernetes_secret" "argocd_initial_admin_secret" {
   
   depends_on = [helm_release.argocd]
 }
+
+

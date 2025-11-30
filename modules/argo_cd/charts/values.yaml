@@ -1,7 +1,7 @@
 # Default values for Argo CD Applications
-gitRepoUrl: "https://github.com/didukhroma/my-microservice-project.git"
-targetRevision: "final-project-devops"
-djangoAppNamespace: "django-app"
+gitRepoUrl: 'https://github.com/didukhroma/my-microservice-project.git'
+targetRevision: 'final_project'
+djangoAppNamespace: 'django-app'
 
 # Applications to create
 applications:
@@ -9,12 +9,12 @@ applications:
     namespace: argocd
     project: default
     source:
-      repoURL: "{{ .Values.gitRepoUrl }}"
-      targetRevision: "{{ .Values.targetRevision }}"
-      path: "charts/django-app"
+      repoURL: '{{ .Values.gitRepoUrl }}'
+      targetRevision: '{{ .Values.targetRevision }}'
+      path: 'charts/django-app'
     destination:
       server: https://kubernetes.default.svc
-      namespace: "{{ .Values.djangoAppNamespace }}"
+      namespace: '{{ .Values.djangoAppNamespace }}'
     syncPolicy:
       automated:
         prune: true
@@ -26,6 +26,6 @@ applications:
 
 # Git repositories to configure
 repositories:
-  - url: "{{ .Values.gitRepoUrl }}"
+  - url: '{{ .Values.gitRepoUrl }}'
     type: git
     name: django-app-repo
