@@ -1,48 +1,75 @@
-# Створюємо основну VPC
 resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr_block   # CIDR блок для нашої VPC (наприклад, 10.0.0.0/16)
-  enable_dns_support   = true                 # Вмикає підтримку DNS у VPC
-  enable_dns_hostnames = true                 # Вмикає можливість використання DNS-імен для ресурсів у VPC
+  cidr_block           = var.vpc_cidr_block
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
   tags = {
-    Name = "${var.vpc_name}-vpc"              # Додаємо тег, який включає ім'я VPC
+    Name        = var.vpc_name
+    Environment = "final-project-devops"
   }
 }
 
-# Створюємо публічні підмережі
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.vpc_name}-igw"
+    Environment = "final-project-devops"
+  }
+}
+
 resource "aws_subnet" "public" {
-  count                   = length(var.public_subnets)   # Створюємо кілька підмереж, кількість визначена довжиною списку public_subnets
-  vpc_id                  = aws_vpc.main.id              # Прив'язуємо кожну підмережу до VPC, створеної раніше
-  cidr_block              = var.public_subnets[count.index] # CIDR-блок для конкретної підмережі зі списку public_subnets
-  availability_zone       = var.availability_zones[count.index] # Визначаємо зони доступності для кожної підмережі
-  map_public_ip_on_launch = true                         # Автоматично надає публічні IP-адреси інстансам у підмережі
+  count = length(var.public_subnets)
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnets[count.index]
+  availability_zone       = var.availability_zones[count.index]
+  map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.vpc_name}-public-subnet-${count.index + 1}"  # Тег з нумерацією підмережі
-    # count.index — це індекс циклу "count", який починається з 0.
-    # ${count.index + 1} додає +1 до індексу, щоб отримати людське позначення (1, 2, 3 замість 0, 1, 2).
+    Name        = "${var.vpc_name}-public-${count.index + 1}"
+    Environment = "final-project-devops"
+    Type        = "Public"
   }
 }
 
-# Створюємо приватні підмережі
 resource "aws_subnet" "private" {
-  count             = length(var.private_subnets)   # Створюємо кілька приватних підмереж, кількість відповідає довжині списку private_subnets
-  vpc_id            = aws_vpc.main.id               # Прив'язуємо кожну приватну підмережу до VPC
-  cidr_block        = var.private_subnets[count.index] # CIDR-блок для конкретної підмережі зі списку private_subnets
-  availability_zone = var.availability_zones[count.index] # Визначаємо зони доступності для підмереж
+  count = length(var.private_subnets)
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnets[count.index]
+  availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name = "${var.vpc_name}-private-subnet-${count.index + 1}"  # Тег для підмережі з нумерацією
-    # ${count.index + 1} використовується, щоб нумерація підмереж починалася з 1.
+    Name        = "${var.vpc_name}-private-${count.index + 1}"
+    Environment = "final-project-devops"
+    Type        = "Private"
   }
 }
 
-# Створюємо Internet Gateway для публічних підмереж
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id   # Прив'язуємо Internet Gateway до VPC для виходу в інтернет
+resource "aws_eip" "nat" {
+  count = length(var.public_subnets)
+
+  domain = "vpc"
 
   tags = {
-    Name = "${var.vpc_name}-igw"   # Тег для ідентифікації Internet Gateway
+    Name        = "${var.vpc_name}-eip-${count.index + 1}"
+    Environment = "final-project-devops"
   }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
+resource "aws_nat_gateway" "main" {
+  count = length(var.public_subnets)
+
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+
+  tags = {
+    Name        = "${var.vpc_name}-nat-${count.index + 1}"
+    Environment = "final-project-devops"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
