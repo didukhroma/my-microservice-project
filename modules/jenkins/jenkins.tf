@@ -13,7 +13,7 @@ resource "helm_release" "jenkins" {
   namespace  = kubernetes_namespace.jenkins.metadata[0].name
 
   timeout = 1200 
-  wait    = true  
+  wait    = false  
   atomic = true
 
   values = [

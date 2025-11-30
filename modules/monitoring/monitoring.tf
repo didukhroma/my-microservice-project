@@ -15,7 +15,7 @@ resource "helm_release" "prometheus" {
   wait    = true
 
   values = [
-    templatefile("${path.module}/values/prometheus-values.yaml", {
+    templatefile("${path.module}/prometheus-values.yaml", {
       prometheus_storage_size = var.prometheus_storage_size
       cluster_name           = var.cluster_name
     })
@@ -35,7 +35,7 @@ resource "helm_release" "grafana" {
   wait    = true
 
   values = [
-    templatefile("${path.module}/values/grafana-values.yaml", {
+    templatefile("${path.module}/grafana-values.yaml", {
       grafana_storage_size   = var.grafana_storage_size
       grafana_admin_password = var.grafana_admin_password
       prometheus_service     = "prometheus-server"

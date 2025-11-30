@@ -86,7 +86,7 @@ podTemplates:
 
 # Persistence
 persistence:
-  enabled: true
+  enabled: false
   storageClass: "gp2"
   size: "20Gi"
   accessMode: "ReadWriteOnce"

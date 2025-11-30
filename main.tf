@@ -168,6 +168,8 @@ module "jenkins" {
   cluster_name     = module.eks.cluster_name
   cluster_endpoint = module.eks.cluster_endpoint
   namespace        = "jenkins"
+
+  depends_on = [ null_resource.apply_kubernetes_secrets ]
 }
 
 module "argo_cd" {
