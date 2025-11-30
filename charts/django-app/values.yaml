@@ -3,7 +3,7 @@ replicaCount: 2
 image:
   repository: 757370076418.dkr.ecr.us-west-2.amazonaws.com/final-project-devops-django-app
   pullPolicy: Always
-  tag: v1.0.0
+  tag: "v1.0.9"
 
 nameOverride: ""
 fullnameOverride: ""
