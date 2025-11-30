@@ -32,13 +32,11 @@ spec:
     IMAGE_NAME   = "final-project-devops-django-app"
     IMAGE_TAG    = "v1.0.${BUILD_NUMBER}"
 
-    // Весь код і чарт тепер в одній гілці цього репозиторію
-    REPO_URL        = "https://github.com/didukhroma/my-microservice-project.git"
-    APP_BRANCH      = "final_project"         
-    GITOPS_REPO_URL = REPO_URL
-    CHART_BRANCH    = APP_BRANCH      // <-- та ж сама гілка
-    MAIN_BRANCH     = APP_BRANCH
-    CHART_PATH      = "charts/django-app"
+    // Код і чарт в одній гілці
+    REPO_URL     = "https://github.com/didukhroma/my-microservice-project.git"
+    APP_BRANCH   = "final_project"
+    CHART_BRANCH = "final_project"
+    CHART_PATH   = "charts/django-app"
 
     COMMIT_EMAIL = "jenkins@example.com"
     COMMIT_NAME  = "Jenkins Pipeline"
@@ -52,9 +50,10 @@ spec:
           sh '''
             set -eux
             rm -rf app-src || true
+
             git clone --depth 1 --branch "$APP_BRANCH" "$REPO_URL" app-src
 
-            # перевіряємо новий шлях до Dockerfile
+            # перевіряємо шлях до Dockerfile
             test -f app-src/Django/Dockerfile
           '''
         }
@@ -65,7 +64,7 @@ spec:
       steps {
         container('kaniko') {
           withCredentials([
-            string(credentialsId: 'aws-access-key-id',    variable: 'AWS_ACCESS_KEY_ID'),
+            string(credentialsId: 'aws-access-key-id',     variable: 'AWS_ACCESS_KEY_ID'),
             string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
           ]) {
             withEnv(["AWS_DEFAULT_REGION=${AWS_REGION}"]) {
@@ -81,10 +80,10 @@ spec:
                 echo "{\\"credsStore\\": \\"ecr-login\\"}" > /kaniko/.docker/config.json
 
                 /kaniko/executor \
-                  --context `pwd`/app-src/Django \
-                  --dockerfile `pwd`/app-src/Django/Dockerfile \
-                  --destination=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG \
-                  --destination=$ECR_REGISTRY/$IMAGE_NAME:latest \
+                  --context "$(pwd)/app-src/Django" \
+                  --dockerfile "$(pwd)/app-src/Django/Dockerfile" \
+                  --destination="$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG" \
+                  --destination="$ECR_REGISTRY/$IMAGE_NAME:latest" \
                   --cache=true
 
                 echo "Successfully pushed image $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG to ECR."
@@ -95,41 +94,41 @@ spec:
       }
     }
 
-   stage('Update Chart Tag in Git') {
-  steps {
-    container('git') {
-      withCredentials([
-        usernamePassword(
-          credentialsId: 'github-pat',
-          usernameVariable: 'GIT_USER',
-          passwordVariable: 'GIT_PAT'
-        )
-      ]) {
-        sh '''
-          set -eux
-          rm -rf chart-repo
+    stage('Update Chart Tag in Git (GitOps)') {
+      steps {
+        container('git') {
+          withCredentials([
+            usernamePassword(
+              credentialsId: 'github-pat',
+              usernameVariable: 'GIT_USER',
+              passwordVariable: 'GIT_PAT'
+            )
+          ]) {
+            sh '''
+              set -eux
+              rm -rf chart-repo
 
-          git clone --branch "$CHART_BRANCH" \
-            https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git \
-            chart-repo
+              git clone --branch "$CHART_BRANCH" \
+                "https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git" \
+                chart-repo
 
-          cd chart-repo/$CHART_PATH    
+              cd "chart-repo/$CHART_PATH"
 
-          sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \"$IMAGE_TAG\"/" values.yaml
+              # Оновлюємо тег у values.yaml (байдуже скільки пробілів)
+              sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \\"$IMAGE_TAG\\"/" values.yaml
 
-          git config user.email "$COMMIT_EMAIL"
-          git config user.name "$COMMIT_NAME"
+              git config user.email "$COMMIT_EMAIL"
+              git config user.name "$COMMIT_NAME"
 
-          git add values.yaml
-          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
+              git add values.yaml
+              git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
 
-          git push origin "$CHART_BRANCH"
-        '''
+              git push origin "$CHART_BRANCH"
+            '''
+          }
+        }
       }
     }
-  }
-}
-
 
   }
 }
