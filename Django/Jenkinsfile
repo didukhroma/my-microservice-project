@@ -34,7 +34,7 @@ spec:
 
     // Весь код і чарт тепер в одній гілці цього репозиторію
     REPO_URL        = "https://github.com/didukhroma/my-microservice-project.git"
-    APP_BRANCH      = "main"          // <-- тут постав ту гілку, де зараз живе final-проєкт
+    APP_BRANCH      = "final_project"         
     GITOPS_REPO_URL = REPO_URL
     CHART_BRANCH    = APP_BRANCH      // <-- та ж сама гілка
     MAIN_BRANCH     = APP_BRANCH
