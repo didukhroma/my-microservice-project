@@ -95,43 +95,41 @@ spec:
       }
     }
 
-    stage('Update Chart Tag in Git') {
-      steps {
-        container('git') {
-          withCredentials([
-            usernamePassword(
-              credentialsId: 'github-pat',      // ID кредів у Jenkins
-              usernameVariable: 'GIT_USER',
-              passwordVariable: 'GIT_PAT'
-            )
-          ]) {
-            sh '''
-              set -eux
-              rm -rf chart-repo
+   stage('Update Chart Tag in Git') {
+  steps {
+    container('git') {
+      withCredentials([
+        usernamePassword(
+          credentialsId: 'github-pat',
+          usernameVariable: 'GIT_USER',
+          passwordVariable: 'GIT_PAT'
+        )
+      ]) {
+        sh '''
+          set -eux
+          rm -rf chart-repo
 
-              # Клонуємо той самий репозиторій у тій самій гілці (CHART_BRANCH = APP_BRANCH)
-              git clone --branch "$CHART_BRANCH" \
-                https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git \
-                chart-repo
+          git clone --branch "$CHART_BRANCH" \
+            https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git \
+            chart-repo
 
-              cd chart-repo/$CHART_PATH
+          cd chart-repo/$CHART_PATH    
 
-              # Оновлюємо тег у values.yaml (байдуже скільки пробілів перед tag)
-              sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \"$IMAGE_TAG\"/" values.yaml
+          sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \"$IMAGE_TAG\"/" values.yaml
 
-              git config user.email "$COMMIT_EMAIL"
-              git config user.name "$COMMIT_NAME"
+          git config user.email "$COMMIT_EMAIL"
+          git config user.name "$COMMIT_NAME"
 
-              git add values.yaml
-              git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
+          git add values.yaml
+          git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
 
-              # Пушимо ту ж саму гілку
-              git push origin "$CHART_BRANCH"
-            '''
-          }
-        }
+          git push origin "$CHART_BRANCH"
+        '''
       }
     }
+  }
+}
+
 
   }
 }
