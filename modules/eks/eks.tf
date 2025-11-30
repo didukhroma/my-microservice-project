@@ -16,7 +16,7 @@ resource "aws_iam_role" "eks_cluster_role" {
 
   tags = {
     Name        = "${var.cluster_name}-cluster-role"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -46,7 +46,7 @@ resource "aws_eks_cluster" "main" {
 
   tags = {
     Name        = var.cluster_name
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -69,7 +69,7 @@ resource "aws_iam_role" "eks_node_group_role" {
 
   tags = {
     Name        = "${var.cluster_name}-node-group-role"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -116,7 +116,7 @@ resource "aws_eks_node_group" "main" {
 
   tags = {
     Name        = var.node_group_name
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 

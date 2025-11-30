@@ -6,7 +6,7 @@ resource "aws_eks_addon" "ebs_csi_driver" {
   
   tags = {
     Name        = "${var.cluster_name}-ebs-csi"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -34,7 +34,7 @@ resource "aws_iam_role" "ebs_csi_driver_role" {
 
   tags = {
     Name        = "${var.cluster_name}-ebs-csi-driver-role"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
 
   tags = {
     Name        = "${var.cluster_name}-oidc"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 

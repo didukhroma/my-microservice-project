@@ -8,7 +8,7 @@ resource "aws_route_table" "public" {
 
   tags = {
     Name        = "${var.vpc_name}-public-rt"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 
@@ -24,7 +24,7 @@ resource "aws_route_table" "private" {
 
   tags = {
     Name        = "${var.vpc_name}-private-rt-${count.index + 1}"
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 

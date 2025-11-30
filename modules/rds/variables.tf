@@ -1,7 +1,7 @@
 variable "project_name" {
   description = "Name of the project"
   type        = string
-  default     = "lesson-8-9"
+  default     = "final-project-devops"
 }
 
 variable "environment" {

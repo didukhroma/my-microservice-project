@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: 757370076418.dkr.ecr.us-west-2.amazonaws.com/lesson-8-9-django-app
+  repository: 757370076418.dkr.ecr.us-west-2.amazonaws.com/final-project-devops-django-app
   pullPolicy: Always
-  tag: v1.0.25
+  tag: v1.0.0
 
 nameOverride: ""
 fullnameOverride: ""

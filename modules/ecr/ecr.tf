@@ -11,7 +11,7 @@ resource "aws_ecr_repository" "main" {
 
   tags = {
     Name        = var.ecr_name
-    Environment = "lesson-8-9"
+    Environment = "final-project-devops"
   }
 }
 

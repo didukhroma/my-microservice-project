@@ -50,7 +50,7 @@ provider "helm" {
 
 module "s3_backend" {
   source      = "./modules/s3-backend"
-  bucket_name = "terraform-state-lesson-8-9"
+  bucket_name = "terraform-state-final-project-devops"
   table_name  = "terraform-locks"
 }
 
@@ -60,25 +60,25 @@ module "vpc" {
   public_subnets     = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
   private_subnets    = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
   availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"] # ["us-west-2a", "us-west-2b", "us-west-2c"]
-  vpc_name           = "lesson-8-9-vpc"
+  vpc_name           = "final-project-devops-vpc"
 }
 
 module "ecr" {
   source       = "./modules/ecr"
-  ecr_name     = "lesson-8-9-django-app"
+  ecr_name     = "final-project-devops-django-app"
   scan_on_push = true
 }
 
 module "eks" {
   source = "./modules/eks"
   
-  cluster_name    = "lesson-8-9-eks-cluster"
+  cluster_name    = "final-project-devops-eks-cluster"
   cluster_version = "1.28"
   
   vpc_id          = module.vpc.vpc_id
   subnet_ids      = concat(module.vpc.private_subnet_ids, module.vpc.public_subnet_ids)
   
-  node_group_name         = "lesson-8-9-nodes"
+  node_group_name         = "final-project-devops-nodes"
   node_group_capacity     = "t3.medium"
   node_group_min_size     = 2
   node_group_max_size     = 6
@@ -86,7 +86,7 @@ module "eks" {
 }
 
 resource "aws_security_group" "eks_to_rds" {
-  name        = "lesson-8-9-eks-to-rds"
+  name        = "final-project-devops-eks-to-rds"
   description = "Allow EKS nodes to access RDS databases"
   vpc_id      = module.vpc.vpc_id
 
@@ -98,8 +98,8 @@ resource "aws_security_group" "eks_to_rds" {
   }
 
   tags = {
-    Name        = "lesson-8-9-eks-to-rds"
-    Project     = "lesson-8-9"
+    Name        = "final-project-devops-eks-to-rds"
+    Project     = "final-project-devops"
     Environment = "dev"
     ManagedBy   = "terraform"
   }
@@ -119,7 +119,7 @@ resource "aws_security_group_rule" "eks_nodes_to_rds" {
 module "rds_postgres" {
   source = "./modules/rds"
   
-  project_name = "lesson-8-9"
+  project_name = "final-project-devops"
   environment  = "dev"
   
   use_aurora     = false
@@ -154,7 +154,7 @@ module "rds_postgres" {
   ]
   
   tags = {
-    Project     = "lesson-8-9"
+    Project     = "final-project-devops"
     Environment = "dev"
     ManagedBy   = "terraform"
     Module      = "rds"
@@ -206,4 +206,19 @@ resource "null_resource" "apply_kubernetes_secrets" {
   depends_on = [
     null_resource.update_kubeconfig
   ]
+}
+
+module "monitoring" {
+  source = "./modules/monitoring"
+  
+  cluster_name     = module.eks.cluster_name
+  cluster_endpoint = module.eks.cluster_endpoint
+  namespace        = "monitoring"
+  
+  prometheus_storage_size = "20Gi"
+  grafana_storage_size    = "5Gi"
+  
+  grafana_admin_password = "Admin12345!!"
+  
+  depends_on = [module.eks]
 }

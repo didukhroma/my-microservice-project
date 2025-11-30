@@ -32,14 +32,13 @@ spec:
     IMAGE_NAME   = "final-project-devops-django-app"
     IMAGE_TAG    = "v1.0.${BUILD_NUMBER}"
 
-    
-    REPO_URL   = "https://github.com/didukhroma/my-microservice-project.git"
-    APP_BRANCH = "dev"
-
-    // GitOps / Helm chart repo 
-    GITOPS_REPO_URL = "https://github.com/didukhroma/my-microservice-project.git"
-    CHART_BRANCH    = "main"               
-    CHART_PATH      = "final-project-devops/charts/django-app"
+    // Весь код і чарт тепер в одній гілці цього репозиторію
+    REPO_URL        = "https://github.com/didukhroma/my-microservice-project.git"
+    APP_BRANCH      = "main"          // <-- тут постав ту гілку, де зараз живе final-проєкт
+    GITOPS_REPO_URL = REPO_URL
+    CHART_BRANCH    = APP_BRANCH      // <-- та ж сама гілка
+    MAIN_BRANCH     = APP_BRANCH
+    CHART_PATH      = "charts/django-app"
 
     COMMIT_EMAIL = "jenkins@example.com"
     COMMIT_NAME  = "Jenkins Pipeline"
@@ -54,7 +53,9 @@ spec:
             set -eux
             rm -rf app-src || true
             git clone --depth 1 --branch "$APP_BRANCH" "$REPO_URL" app-src
-            test -f app-src/docker/django_app/Dockerfile
+
+            # перевіряємо новий шлях до Dockerfile
+            test -f app-src/Django/Dockerfile
           '''
         }
       }
@@ -80,8 +81,8 @@ spec:
                 echo "{\\"credsStore\\": \\"ecr-login\\"}" > /kaniko/.docker/config.json
 
                 /kaniko/executor \
-                  --context `pwd`/app-src/docker/django_app \
-                  --dockerfile `pwd`/app-src/docker/django_app/Dockerfile \
+                  --context `pwd`/app-src/Django \
+                  --dockerfile `pwd`/app-src/Django/Dockerfile \
                   --destination=$ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG \
                   --destination=$ECR_REGISTRY/$IMAGE_NAME:latest \
                   --cache=true
@@ -94,29 +95,43 @@ spec:
       }
     }
 
-    stage('Update Chart Tag (GitOps)') {
+    stage('Update Chart Tag in Git') {
       steps {
         container('git') {
-          sh '''
-            set -eux
+          withCredentials([
+            usernamePassword(
+              credentialsId: 'github-pat',      // ID кредів у Jenkins
+              usernameVariable: 'GIT_USER',
+              passwordVariable: 'GIT_PAT'
+            )
+          ]) {
+            sh '''
+              set -eux
+              rm -rf chart-repo
 
-            rm -rf gitops-repo || true
-            git clone --depth 1 --branch "$CHART_BRANCH" "$GITOPS_REPO_URL" gitops-repo
+              # Клонуємо той самий репозиторій у тій самій гілці (CHART_BRANCH = APP_BRANCH)
+              git clone --branch "$CHART_BRANCH" \
+                https://$GIT_USER:$GIT_PAT@github.com/didukhroma/my-microservice-project.git \
+                chart-repo
 
-            cd gitops-repo/"$CHART_PATH"
+              cd chart-repo/$CHART_PATH
 
-            sed -i.bak "s/^  tag: .*/  tag: $IMAGE_TAG/" values.yaml
-            rm -f values.yaml.bak
+              # Оновлюємо тег у values.yaml (байдуже скільки пробілів перед tag)
+              sed -i "s/^[[:space:]]*tag:[[:space:]].*/  tag: \"$IMAGE_TAG\"/" values.yaml
 
-            git config user.email "$COMMIT_EMAIL"
-            git config user.name "$COMMIT_NAME"
+              git config user.email "$COMMIT_EMAIL"
+              git config user.name "$COMMIT_NAME"
 
-            git add values.yaml
-            git commit -m "chore(pipeline): Update Django-App chart tag to $IMAGE_TAG" || echo "No changes to commit"
-            git push origin "$CHART_BRANCH"
-          '''
+              git add values.yaml
+              git commit -m "chore(pipeline): Update Django-App image tag to $IMAGE_TAG" || echo "nothing to commit"
+
+              # Пушимо ту ж саму гілку
+              git push origin "$CHART_BRANCH"
+            '''
+          }
         }
       }
     }
+
   }
 }
