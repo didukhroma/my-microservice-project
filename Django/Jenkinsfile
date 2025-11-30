@@ -36,7 +36,7 @@ spec:
     REPO_URL     = "https://github.com/didukhroma/my-microservice-project.git"
     APP_BRANCH   = "final_project"
     CHART_BRANCH = "final_project"
-    CHART_PATH   = "charts/django-app"
+    CHART_PATH   = "final-project-devops/charts/django-app"
 
     COMMIT_EMAIL = "jenkins@example.com"
     COMMIT_NAME  = "Jenkins Pipeline"
